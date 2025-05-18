@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Management Application</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-blue-800 text-white p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Investment Portfolio Manager</h1>
+            <div class="flex items-center space-x-4">
+                <span id="username">Guest</span>
+                <span id="balance" class="bg-blue-700 px-3 py-1 rounded-full">$0.00</span>
+            </div>
+        </div>
+    </nav>
+
+    <div id="setup-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h2 class="text-xl font-bold mb-4">Welcome to the Investment Portfolio Manager</h2>
+            <div class="mb-4">
+                <label class="block text-gray-700 mb-2" for="name-input">Your Name</label>
+                <input id="name-input" type="text" class="w-full border rounded px-3 py-2" placeholder="Enter your name">
+            </div>
+            <div class="mb-6">
+                <label class="block text-gray-700 mb-2" for="balance-input">Initial Balance ($)</label>
+                <input id="balance-input" type="number" class="w-full border rounded px-3 py-2" placeholder="Enter initial balance">
+            </div>
+            <button id="start-btn" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Start Investing</button>
+        </div>
+    </div>
+
+    <div class="container mx-auto p-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow-md">
+                <h3 class="font-semibold text-gray-700">Portfolio Value</h3>
+                <p id="portfolio-value" class="text-2xl font-bold">$0.00</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow-md">
+                <h3 class="font-semibold text-gray-700">Cash Balance</h3>
+                <p id="cash-balance" class="text-2xl font-bold">$0.00</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow-md">
+                <h3 class="font-semibold text-gray-700">Total Assets</h3>
+                <p id="asset-count" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="bg-white p-4 rounded shadow-md">
+                <h3 class="font-semibold text-gray-700">Overall ROI</h3>
+                <p id="total-roi" class="text-2xl font-bold">0.00%</p>
+                <p class="text-xs text-gray-500 mt-1">Dihitung dari saldo awal hingga nilai saat ini</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-6 mb-6">
+            <div class="w-full md:w-2/3">
+                <div class="bg-white p-4 rounded shadow-md mb-6">
+                    <h2 class="text-xl font-bold mb-4">Your Portfolio</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="text-left py-2 px-4">Asset</th>
+                                    <th class="text-right py-2 px-4">Price</th>
+                                    <th class="text-right py-2 px-4">Quantity</th>
+                                    <th class="text-right py-2 px-4">Avg. Purchase</th>
+                                    <th class="text-right py-2 px-4">Total Value</th>
+                                    <th class="text-right py-2 px-4">Profit/Loss</th>
+                                    <th class="text-right py-2 px-4">ROI %</th>
+                                    <th class="text-center py-2 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="portfolio-table">
+                                <!-- Portfolio data will be inserted here -->
+                                <tr class="border-t">
+                                    <td colspan="8" class="py-4 text-center text-gray-500">No assets in portfolio</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow-md">
+                    <h2 class="text-xl font-bold mb-4">Portfolio Allocation</h2>
+                    <div class="h-64">
+                        <canvas id="portfolio-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full md:w-1/3">
+                <div class="bg-white p-4 rounded shadow-md mb-6">
+                    <h2 class="text-xl font-bold mb-4">Trade Assets</h2>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="asset-type">Asset Category</label>
+                        <select id="asset-type" class="w-full border rounded px-3 py-2">
+                            <option value="stocks">Stocks (S&P 500)</option>
+                            <option value="commodities">Commodities</option>
+                            <option value="crypto">Cryptocurrencies</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="asset-select">Select Asset</label>
+                        <select id="asset-select" class="w-full border rounded px-3 py-2">
+                            <!-- Assets will be populated here based on category -->
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="quantity">Quantity</label>
+                        <input id="quantity" type="number" class="w-full border rounded px-3 py-2" min="1" value="1">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 mb-2" for="custom-price">Purchase Price (leave empty for current price)</label>
+                        <input id="custom-price" type="number" class="w-full border rounded px-3 py-2" placeholder="Custom purchase price">
+                    </div>
+                    <div class="mb-4">
+                        <p class="text-gray-700">Current Market Price: <span id="current-price">$0.00</span></p>
+                        <p class="text-gray-700">Total Cost: <span id="total-cost">$0.00</span></p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="buy-btn" class="flex-1 bg-green-600 text-white py-2 rounded hover:bg-green-700">Buy</button>
+                        <button id="sell-btn" class="flex-1 bg-red-600 text-white py-2 rounded hover:bg-red-700">Sell</button>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded shadow-md">
+                    <h2 class="text-xl font-bold mb-4">Search Assets</h2>
+                    <div class="mb-4">
+                        <input id="search-input" type="text" class="w-full border rounded px-3 py-2" placeholder="Search by asset name...">
+                    </div>
+                    <div class="max-h-48 overflow-y-auto">
+                        <ul id="search-results" class="divide-y">
+                            <!-- Search results will appear here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Transaction History Section -->
+        <div class="w-full bg-white p-4 rounded shadow-md mb-6">
+            <h2 class="text-xl font-bold mb-4">Transaction History</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="text-left py-2 px-4">Date</th>
+                            <th class="text-left py-2 px-4">Type</th>
+                            <th class="text-left py-2 px-4">Asset</th>
+                            <th class="text-right py-2 px-4">Quantity</th>
+                            <th class="text-right py-2 px-4">Price</th>
+                            <th class="text-right py-2 px-4">Total Value</th>
+                            <th class="text-right py-2 px-4">Current/Sell Price</th>
+                            <th class="text-right py-2 px-4">P&L</th>
+                            <th class="text-right py-2 px-4">ROI %</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-table">
+                        <!-- Transaction history will be inserted here -->
+                        <tr class="border-t">
+                            <td colspan="9" class="py-4 text-center text-gray-500">No transaction history</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Catatan: ROI transaksi dihitung per aset dan berbeda dari Overall ROI yang mencakup keseluruhan portofolio</p>
+        </div>
+    </div>
+
+    <script>
+        // Data structures to mirror the Go code
+        class Asset {
+            constructor(name, price, quantity = 0, totalPrice = 0, purchasePrice = null) {
+                this.name = name;
+                this.price = price;
+                this.quantity = quantity;
+                this.totalPrice = totalPrice;
+                this.purchasePrice = purchasePrice || price; // Default to current price if not provided
+                this.nav = quantity * price; // Net Asset Value
+            }
+
+            getRoi() {
+                if (this.totalPrice === 0) return 0;
+                const currentValue = this.quantity * this.price;
+                return ((currentValue - this.totalPrice) / this.totalPrice) * 100;
+            }
+        }
+
+        // New Transaction class to store transaction history
+        class Transaction {
+            constructor(type, assetName, quantity, price, totalValue, date = new Date()) {
+                this.type = type; // 'buy' or 'sell'
+                this.assetName = assetName;
+                this.quantity = quantity;
+                this.price = price;
+                this.totalValue = totalValue;
+                this.date = date;
+                this.currentPrice = price; // Initially set to purchase/sell price
+                this.sellPrice = null; // For 'buy' transactions that are later sold
+                this.pnl = 0; // Profit/Loss
+                this.roi = 0; // ROI percentage
+            }
+
+            // Update the current price (for buy transactions that are still held)
+            updateCurrentPrice(price) {
+                this.currentPrice = price;
+                this.updatePnL();
+            }
+
+            // Set the sell price (for buy transactions that are sold)
+            setSellPrice(price) {
+                this.sellPrice = price;
+                this.updatePnL();
+            }
+
+            // Update P&L and ROI calculations
+            updatePnL() {
+                if (this.type === 'buy') {
+                    const finalPrice = this.sellPrice || this.currentPrice;
+                    const finalValue = this.quantity * finalPrice;
+                    this.pnl = finalValue - this.totalValue;
+                    this.roi = (this.pnl / this.totalValue) * 100;
+                } else if (this.type === 'sell') {
+                    // For sell transactions, P&L and ROI are calculated based on the referenced buy transaction
+                    // This will be handled separately
+                }
+            }
+        }
+
+        class Portfolio {
+            constructor(balance = 0) {
+                this.balance = balance;
+                this.assets = new Map();
+                this.transactions = []; // Add transactions array to store history
+                this.initialBalance = balance; // Keep track of initial balance
+            }
+
+            buyAsset(name, quantity, price, purchasePrice = null) {
+                const actualPurchasePrice = purchasePrice || price;
+                const totalPrice = quantity * actualPurchasePrice;
+                if (totalPrice > this.balance) {
+                    showNotification("Not enough balance to buy " + name, "error");
+                    return false;
+                }
+                
+                this.balance -= totalPrice;
+                
+                if (this.assets.has(name)) {
+                    const asset = this.assets.get(name);
+                    const oldTotalPrice = asset.totalPrice;
+                    const oldQuantity = asset.quantity;
+                    
+                    asset.quantity += quantity;
+                    asset.totalPrice += totalPrice;
+                    
+                    // Calculate weighted average purchase price
+                    const weightedAvgPrice = asset.totalPrice / asset.quantity;
+                    asset.purchasePrice = weightedAvgPrice;
+                    
+                    asset.nav = asset.quantity * asset.price;
+                } else {
+                    this.assets.set(name, new Asset(name, price, quantity, totalPrice, actualPurchasePrice));
+                }
+                
+                // Add transaction to history
+                const transaction = new Transaction('buy', name, quantity, actualPurchasePrice, totalPrice);
+                this.transactions.push(transaction);
+                
+                showNotification(`Successfully bought ${quantity} units of ${name}`, "success");
+                return true;
+            }
+
+            sellAsset(name, quantity, price) {
+                if (!this.assets.has(name) || this.assets.get(name).quantity < quantity) {
+                    showNotification("Not enough assets to sell " + name, "error");
+                    return false;
+                }
+                
+                const totalPrice = quantity * price;
+                this.balance += totalPrice;
+                
+                const asset = this.assets.get(name);
+                
+                // Create sell transaction
+                const sellTransaction = new Transaction('sell', name, quantity, price, totalPrice);
+                
+                // Find matching buy transactions to calculate P&L for this sale
+                // We'll use FIFO (First In, First Out) method for accounting
+                let remainingToSell = quantity;
+                let totalCostBasis = 0;
+                
+                // Filter buy transactions for this asset that still have quantity available
+                const buyTransactions = this.transactions.filter(t => 
+                    t.type === 'buy' && t.assetName === name && 
+                    (t.quantity > 0)
+                );
+                
+                // Store buy transactions that were fully or partially sold in this transaction
+                const soldBuyTransactions = [];
+                
+                // Update buy transactions
+                for (const buyTx of buyTransactions) {
+                    if (remainingToSell <= 0) break;
+                    
+                    const sellFromThis = Math.min(remainingToSell, buyTx.quantity);
+                    const costBasis = sellFromThis * buyTx.price;
+                    totalCostBasis += costBasis;
+                    
+                    // Calculate P&L for this specific buy transaction
+                    const buyProfit = (price - buyTx.price) * sellFromThis;
+                    const buyRoi = (buyTx.price > 0) ? ((price - buyTx.price) / buyTx.price) * 100 : 0;
+                    
+                    // Create a reference to original transaction 
+                    soldBuyTransactions.push({
+                        transaction: buyTx,
+                        soldQuantity: sellFromThis,
+                        profit: buyProfit,
+                        roi: buyRoi
+                    });
+                    
+                    // Update the buy transaction
+                    buyTx.quantity -= sellFromThis;
+                    
+                    // Only set sellPrice if fully sold (quantity is now 0)
+                    // For partially sold transactions, we'll handle differently
+                    if (buyTx.quantity === 0) {
+                        buyTx.setSellPrice(price);
+                        buyTx.pnl = buyProfit;
+                        buyTx.roi = buyRoi;
+                    }
+                    
+                    remainingToSell -= sellFromThis;
+                }
+                
+                // Calculate P&L for this sell transaction
+                const pnl = totalPrice - totalCostBasis;
+                const roi = (totalCostBasis > 0) ? (pnl / totalCostBasis) * 100 : 0;
+                
+                sellTransaction.pnl = pnl;
+                sellTransaction.roi = roi;
+                
+                // Link this sell transaction to the buy transactions it consumed
+                sellTransaction.relatedBuyTransactions = soldBuyTransactions;
+                
+                // Add to transaction history
+                this.transactions.push(sellTransaction);
+                
+                // Update asset
+                asset.quantity -= quantity;
+                asset.totalPrice -= (asset.purchasePrice * quantity); // Approximate tracking of cost basis
+                asset.nav = asset.quantity * asset.price;
+                
+                if (asset.quantity === 0) {
+                    this.assets.delete(name);
+                }
+                
+                showNotification(`Successfully sold ${quantity} units of ${name}`, "success");
+                return true;
+            }
+
+            getTotalValue() {
+                let total = this.balance;
+                for (const asset of this.assets.values()) {
+                    total += asset.nav;
+                }
+                return total;
+            }
+
+            getProfitLoss() {
+                let invested = 0;
+                let currentValue = 0;
+                
+                for (const asset of this.assets.values()) {
+                    invested += asset.totalPrice;
+                    currentValue += asset.nav;
+                }
+                
+                return currentValue - invested;
+            }
+
+            // Get the overall ROI of the portfolio
+            getOverallROI() {
+                const initialInvestment = this.initialBalance;
+                const currentValue = this.getTotalValue();
+                return ((currentValue - initialInvestment) / initialInvestment) * 100;
+            }
+
+            // Update current prices for open transactions
+            updateTransactionPrices() {
+                for (const transaction of this.transactions) {
+                    if (transaction.type === 'buy' && transaction.quantity > 0) {
+                        // Find current price
+                        let currentPrice = transaction.price; // Default to purchase price
+                        let assetList = [...sp500, ...commodities, ...cryptocurrencies];
+                        const asset = assetList.find(a => a.name === transaction.assetName);
+                        if (asset) {
+                            currentPrice = asset.price;
+                        }
+                        transaction.updateCurrentPrice(currentPrice);
+                    }
+                }
+            }
+        }
+
+        // Asset data from Go code
+        const sp500 = [
+            new Asset("Tesla", 750.0),
+            new Asset("Apple", 145.0),
+            new Asset("Microsoft", 300.0),
+            new Asset("Amazon", 3400.0),
+            new Asset("Google", 2800.0),
+            new Asset("Facebook", 330.0),
+            new Asset("Berkshire Hathaway", 420000.0),
+            new Asset("Johnson & Johnson", 175.0),
+            new Asset("Visa", 230.0),
+            new Asset("Nvidia", 670.0)
+        ];
+
+        const commodities = [
+            new Asset("Gold", 1800.0),
+            new Asset("Silver", 25.0)
+        ];
+
+        const cryptocurrencies = [
+            new Asset("Bitcoin", 103972.67),
+            new Asset("Ethereum", 2520.55),
+            new Asset("Tether", 1.00),
+            new Asset("XRP", 2.39),
+            new Asset("BNB", 647.41),
+            new Asset("Solana", 171.34),
+            new Asset("USD Coin", 0.9997),
+            new Asset("Dogecoin", 0.2243),
+            new Asset("Cardano", 0.7619),
+            new Asset("Tron", 0.2729)
+        ];
+
+        // Global variables
+        let portfolio;
+        let portfolioChart;
+        let userName;
+
+        // Utility functions
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        }
+
+        function formatDate(date) {
+            return new Intl.DateTimeFormat('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }).format(date);
+        }
+
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded shadow-lg ${type === 'error' ? 'bg-red-500' : 'bg-green-500'} text-white`;
+            notification.textContent = message;
+            
+            // Add to DOM
+            document.body.appendChild(notification);
+            
+            // Remove after timeout
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set up initial modal
+            const setupModal = document.getElementById('setup-modal');
+            const startBtn = document.getElementById('start-btn');
+            const nameInput = document.getElementById('name-input');
+            const balanceInput = document.getElementById('balance-input');
+
+            startBtn.addEventListener('click', () => {
+                const name = nameInput.value.trim();
+                const balance = parseFloat(balanceInput.value);
+                
+                if (!name) {
+                    showNotification("Please enter your name", "error");
+                    return;
+                }
+                
+                if (isNaN(balance) || balance <= 0) {
+                    showNotification("Please enter a valid initial balance", "error");
+                    return;
+                }
+                
+                // Initialize portfolio
+                userName = name;
+                portfolio = new Portfolio(balance);
+                
+                // Update UI
+                document.getElementById('username').textContent = userName;
+                document.getElementById('balance').textContent = formatCurrency(balance);
+                
+                // Close modal
+                setupModal.classList.add('hidden');
+                
+                // Initialize the rest of the app
+                initializeApp();
+            });
+
+            // Set up asset type change
+            const assetTypeSelect = document.getElementById('asset-type');
+            assetTypeSelect.addEventListener('change', populateAssetSelect);
+
+            // Set up quantity and custom price inputs
+            const quantityInput = document.getElementById('quantity');
+            const customPriceInput = document.getElementById('custom-price');
+            
+            quantityInput.addEventListener('input', updateTotalCost);
+            customPriceInput.addEventListener('input', updateTotalCost);
+
+            // Set up asset selection
+            const assetSelect = document.getElementById('asset-select');
+            assetSelect.addEventListener('change', updateCurrentPrice);
+
+            // Set up buy/sell buttons
+            document.getElementById('buy-btn').addEventListener('click', buyAsset);
+            document.getElementById('sell-btn').addEventListener('click', sellAsset);
+
+            // Set up search
+            document.getElementById('search-input').addEventListener('input', searchAssets);
+        });
+
+        function initializeApp() {
+            // Initialize dashboard
+            updateDashboard();
+            
+            // Initialize asset select
+            populateAssetSelect();
+            
+            // Initialize portfolio chart
+            initializeChart();
+        }
+
+        function populateAssetSelect() {
+            const assetType = document.getElementById('asset-type').value;
+            const assetSelect = document.getElementById('asset-select');
+            
+            // Clear current options
+            assetSelect.innerHTML = '';
+            
+            // Get selected asset list
+            let assetList;
+            switch (assetType) {
+                case 'stocks':
+                    assetList = sp500;
+                    break;
+                case 'commodities':
+                    assetList = commodities;
+                    break;
+                case 'crypto':
+                    assetList = cryptocurrencies;
+                    break;
+            }
+            
+            // Add options for each asset
+            assetList.forEach(asset => {
+                const option = document.createElement('option');
+                option.value = asset.name;
+                option.textContent = `${asset.name} - ${formatCurrency(asset.price)}`;
+                assetSelect.appendChild(option);
+            });
+            
+            // Update price display
+            updateCurrentPrice();
+        }
+
+        function updateCurrentPrice() {
+            const assetType = document.getElementById('asset-type').value;
+            const assetName = document.getElementById('asset-select').value;
+            
+            // Get selected asset list
+            let assetList;
+            switch (assetType) {
+                case 'stocks':
+                    assetList = sp500;
+                    break;
+                case 'commodities':
+                    assetList = commodities;
+                    break;
+                case 'crypto':
+                    assetList = cryptocurrencies;
+                    break;
+            }
+            
+            // Find the asset
+            const asset = assetList.find(a => a.name === assetName);
+            if (asset) {
+                document.getElementById('current-price').textContent = formatCurrency(asset.price);
+                updateTotalCost();
+            }
+        }
+
+        function updateTotalCost() {
+            const assetType = document.getElementById('asset-type').value;
+            const assetName = document.getElementById('asset-select').value;
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const customPrice = parseFloat(document.getElementById('custom-price').value);
+            
+            // Get selected asset list
+            let assetList;
+            switch (assetType) {
+                case 'stocks':
+                    assetList = sp500;
+                    break;
+                case 'commodities':
+                    assetList = commodities;
+                    break;
+                case 'crypto':
+                    assetList = cryptocurrencies;
+                    break;
+            }
+            
+            // Find the asset
+            const asset = assetList.find(a => a.name === assetName);
+            if (asset) {
+                const price = !isNaN(customPrice) ? customPrice : asset.price;
+                const totalCost = price * quantity;
+                document.getElementById('total-cost').textContent = formatCurrency(totalCost);
+            }
+        }
+
+        function buyAsset() {
+            const assetType = document.getElementById('asset-type').value;
+            const assetName = document.getElementById('asset-select').value;
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const customPrice = parseFloat(document.getElementById('custom-price').value);
+            
+            if (quantity <= 0) {
+                showNotification("Please enter a valid quantity", "error");
+                return;
+            }
+            
+            // Get selected asset list
+            let assetList;
+            switch (assetType) {
+                case 'stocks':
+                    assetList = sp500;
+                    break;
+                case 'commodities':
+                    assetList = commodities;
+                    break;
+                case 'crypto':
+                    assetList = cryptocurrencies;
+                    break;
+            }
+            
+            // Find the asset
+            const asset = assetList.find(a => a.name === assetName);
+            if (asset) {
+                // Buy the asset with custom purchase price if provided
+                if (portfolio.buyAsset(asset.name, quantity, asset.price, !isNaN(customPrice) ? customPrice : null)) {
+                    // Update UI
+                    updateDashboard();
+                    updatePortfolioTable();
+                    updateChart();
+                    updateTransactionHistory(); // Update transaction history
+                }
+            }
+        }
+
+        function sellAsset() {
+            const assetType = document.getElementById('asset-type').value;
+            const assetName = document.getElementById('asset-select').value;
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            
+            if (quantity <= 0) {
+                showNotification("Please enter a valid quantity", "error");
+                return;
+            }
+            
+            // Get selected asset list
+            let assetList;
+            switch (assetType) {
+                case 'stocks':
+                    assetList = sp500;
+                    break;
+                case 'commodities':
+                    assetList = commodities;
+                    break;
+                case 'crypto':
+                    assetList = cryptocurrencies;
+                    break;
+            }
+            
+            // Find the asset
+            const asset = assetList.find(a => a.name === assetName);
+            if (asset) {
+                // Sell the asset
+                if (portfolio.sellAsset(asset.name, quantity, asset.price)) {
+                    // Update UI
+                    updateDashboard();
+                    updatePortfolioTable();
+                    updateChart();
+                    updateTransactionHistory(); // Update transaction history
+                }
+            }
+        }
+
+        function updateDashboard() {
+            // Update balance displays
+            document.getElementById('balance').textContent = formatCurrency(portfolio.balance);
+            document.getElementById('cash-balance').textContent = formatCurrency(portfolio.balance);
+            
+            // Calculate total portfolio value
+            const totalValue = portfolio.getTotalValue();
+            document.getElementById('portfolio-value').textContent = formatCurrency(totalValue);
+            
+            // Count assets
+            document.getElementById('asset-count').textContent = portfolio.assets.size;
+            
+            // Calculate total ROI
+            const totalRoi = portfolio.getOverallROI();
+            
+            const totalRoiElement = document.getElementById('total-roi');
+            totalRoiElement.textContent = totalRoi.toFixed(2) + '%';
+            totalRoiElement.className = totalRoi >= 0 ? 'text-2xl font-bold text-green-600' : 'text-2xl font-bold text-red-600';
+            
+            // Update portfolio table
+            updatePortfolioTable();
+        }
+
+        function updatePortfolioTable() {
+            const portfolioTable = document.getElementById('portfolio-table');
+            
+            // Clear current table
+            portfolioTable.innerHTML = '';
+            
+            // Check if portfolio is empty
+            if (portfolio.assets.size === 0) {
+                const row = document.createElement('tr');
+                row.className = 'border-t';
+                row.innerHTML = '<td colspan="8" class="py-4 text-center text-gray-500">No assets in portfolio</td>';
+                portfolioTable.appendChild(row);
+                return;
+            }
+            
+            // Add rows for each asset
+            for (const asset of portfolio.assets.values()) {
+                const row = document.createElement('tr');
+                row.className = 'border-t hover:bg-gray-50';
+                
+                // Calculate profit/loss
+                const assetValue = asset.price * asset.quantity;
+                const profitLoss = assetValue - asset.totalPrice;
+                const profitLossClass = profitLoss >= 0 ? 'text-green-600' : 'text-red-600';
+                
+                // Calculate ROI
+                const roi = asset.getRoi();
+                const roiClass = roi >= 0 ? 'text-green-600' : 'text-red-600';
+                
+                row.innerHTML = `
+                    <td class="py-2 px-4">${asset.name}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(asset.price)}</td>
+                    <td class="py-2 px-4 text-right">${asset.quantity}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(asset.purchasePrice)}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(assetValue)}</td>
+                    <td class="py-2 px-4 text-right ${profitLossClass}">${formatCurrency(profitLoss)}</td>
+                    <td class="py-2 px-4 text-right ${roiClass}">${roi.toFixed(2)}%</td>
+                    <td class="py-2 px-4 text-center">
+                        <button class="sell-one-btn bg-red-100 text-red-800 px-2 py-1 rounded hover:bg-red-200" data-asset="${asset.name}">Sell 1</button>
+                    </td>
+                `;
+                
+                portfolioTable.appendChild(row);
+                
+                // Add event listener for sell button
+                const sellBtn = row.querySelector('.sell-one-btn');
+                sellBtn.addEventListener('click', (e) => {
+                    const assetName = e.target.getAttribute('data-asset');
+                    sellOneAsset(assetName);
+                });
+            }
+        }
+
+        function sellOneAsset(assetName) {
+            // Find the asset in all lists
+            let asset;
+            let assetList = [...sp500, ...commodities, ...cryptocurrencies];
+            asset = assetList.find(a => a.name === assetName);
+            
+            if (asset) {
+                // Sell one unit of the asset
+                if (portfolio.sellAsset(assetName, 1, asset.price)) {
+                    // Update UI
+                    updateDashboard();
+                    updateChart();
+                    updateTransactionHistory(); // Update transaction history
+                }
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('portfolio-chart').getContext('2d');
+            
+            portfolioChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Cash'],
+                    datasets: [{
+                        data: [100],
+                        backgroundColor: ['#3b82f6'], // Blue for cash
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+            
+            // Update chart with initial data
+            updateChart();
+        }
+
+        function updateChart() {
+            // Prepare data for chart
+            const labels = ['Cash'];
+            const data = [portfolio.balance];
+            const backgroundColors = ['#3b82f6']; // Blue for cash
+            
+            // Add assets
+            for (const asset of portfolio.assets.values()) {
+                labels.push(asset.name);
+                data.push(asset.nav);
+                
+                // Generate a random color for each asset
+                const hue = Math.floor(Math.random() * 360);
+                backgroundColors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+            
+            // Update chart data
+            portfolioChart.data.labels = labels;
+            portfolioChart.data.datasets[0].data = data;
+            portfolioChart.data.datasets[0].backgroundColor = backgroundColors;
+            
+            // Update chart
+            portfolioChart.update();
+        }
+
+        // New function to update transaction history table
+        function updateTransactionHistory() {
+            const transactionTable = document.getElementById('transaction-table');
+            
+            // Clear current table
+            transactionTable.innerHTML = '';
+            
+            // Update current prices in transactions
+            portfolio.updateTransactionPrices();
+            
+            // Check if there are no transactions
+            if (portfolio.transactions.length === 0) {
+                const row = document.createElement('tr');
+                row.className = 'border-t';
+                row.innerHTML = '<td colspan="9" class="py-4 text-center text-gray-500">No transaction history</td>';
+                transactionTable.appendChild(row);
+                return;
+            }
+            
+            // Add rows for each transaction (most recent first)
+            const sortedTransactions = [...portfolio.transactions].reverse();
+            
+            for (const transaction of sortedTransactions) {
+                const row = document.createElement('tr');
+                row.className = 'border-t hover:bg-gray-50';
+                
+                // Determine type styling
+                const typeClass = transaction.type === 'buy' ? 'text-green-600' : 'text-red-600';
+                
+                // Determine what to show in current/sell price column
+                let currentOrSellPrice = '';
+                let pnlDisplay = '';
+                let roiDisplay = '';
+                
+                if (transaction.type === 'buy') {
+                    // For buy transactions, always show current price but never show P&L and ROI
+                    currentOrSellPrice = transaction.sellPrice || transaction.currentPrice;
+                    
+                    // Always show dash for P&L and ROI in BUY transactions
+                    pnlDisplay = '<span class="text-gray-500">-</span>';
+                    roiDisplay = '<span class="text-gray-500">-</span>';
+                } else {
+                    // For sell transactions, show all values
+                    currentOrSellPrice = transaction.price; // The sell price
+                    const pnlClass = transaction.pnl >= 0 ? 'text-green-600' : 'text-red-600';
+                    const roiClass = transaction.roi >= 0 ? 'text-green-600' : 'text-red-600';
+                    pnlDisplay = `<span class="${pnlClass}">${formatCurrency(transaction.pnl)}</span>`;
+                    roiDisplay = `<span class="${roiClass}">${transaction.roi.toFixed(2)}%</span>`;
+                }
+                
+                row.innerHTML = `
+                    <td class="py-2 px-4">${formatDate(transaction.date)}</td>
+                    <td class="py-2 px-4 font-semibold ${typeClass}">${transaction.type.toUpperCase()}</td>
+                    <td class="py-2 px-4">${transaction.assetName}</td>
+                    <td class="py-2 px-4 text-right">${transaction.quantity}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(transaction.price)}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(transaction.totalValue)}</td>
+                    <td class="py-2 px-4 text-right">${formatCurrency(currentOrSellPrice)}</td>
+                    <td class="py-2 px-4 text-right">${pnlDisplay}</td>
+                    <td class="py-2 px-4 text-right">${roiDisplay}</td>
+                `;
+                
+                transactionTable.appendChild(row);
+            }
+        }
+
+        function searchAssets() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const resultsContainer = document.getElementById('search-results');
+            
+            // Clear current results
+            resultsContainer.innerHTML = '';
+            
+            if (!searchTerm) return;
+            
+            // Combine all asset lists
+            const allAssets = [...sp500, ...commodities, ...cryptocurrencies];
+            
+            // Filter assets by search term
+            const filteredAssets = allAssets.filter(asset => 
+                asset.name.toLowerCase().includes(searchTerm)
+            );
+            
+            // Display results
+            if (filteredAssets.length === 0) {
+                resultsContainer.innerHTML = '<li class="py-2 px-3 text-gray-500">No assets found</li>';
+                return;
+            }
+            
+            filteredAssets.forEach(asset => {
+                const item = document.createElement('li');
+                item.className = 'py-2 px-3 hover:bg-gray-100 cursor-pointer flex justify-between';
+                item.innerHTML = `
+                    <span>${asset.name}</span>
+                    <span class="font-semibold">${formatCurrency(asset.price)}</span>
+                `;
+                
+                // Add click event to populate the trade form
+                item.addEventListener('click', () => {
+                    // Determine asset type
+                    let assetType;
+                    if (sp500.find(a => a.name === asset.name)) {
+                        assetType = 'stocks';
+                    } else if (commodities.find(a => a.name === asset.name)) {
+                        assetType = 'commodities';
+                    } else {
+                        assetType = 'crypto';
+                    }
+                    
+                    // Set the asset type and trigger change event
+                    document.getElementById('asset-type').value = assetType;
+                    document.getElementById('asset-type').dispatchEvent(new Event('change'));
+                    
+                    // Set the asset and trigger change event
+                    document.getElementById('asset-select').value = asset.name;
+                    document.getElementById('asset-select').dispatchEvent(new Event('change'));
+                    
+                    // Set quantity to 1
+                    document.getElementById('quantity').value = 1;
+                    document.getElementById('quantity').dispatchEvent(new Event('input'));
+                    
+                    // Clear search
+                    document.getElementById('search-input').value = '';
+                    resultsContainer.innerHTML = '';
+                });
+                
+                resultsContainer.appendChild(item);
+            });
+        }
+    </script>
+</body>
+</html>
